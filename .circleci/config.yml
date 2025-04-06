@@ -9,7 +9,7 @@ jobs:
     steps:
       - checkout  # Checkout the repository
 
-      # Set up Python environment and install dependencies
+      # Step 1: Set up Python environment
       - run:
           name: Set up Python
           command: |
@@ -18,7 +18,7 @@ jobs:
             pip install -r requirements.txt
             pip install pytest
 
-      # Run Unit Tests with pytest and generate results in XML format
+      # Step 2: Run Unit Tests with pytest and generate results in XML format
       - run:
           name: Run Unit Tests
           command: |
@@ -26,64 +26,44 @@ jobs:
             mkdir -p test-results
             pytest --junitxml=test-results/results.xml
 
-      # Install OpenJDK 17 and SonarScanner
-      - run:
-          name: Install OpenJDK 17 and SonarScanner
-          command: |
-            # Install OpenJDK 17
-            sudo apt-get update
-            sudo apt-get install -y openjdk-17-jdk
-
-            # Verify Java 17 Installation
-            java -version  # This should print Java 17 info
-
-            # Install SonarScanner
-            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
-            unzip sonar-scanner-cli-4.8.0.2856-linux.zip
-            mv sonar-scanner-4.8.0.2856-linux sonar-scanner
-
-            # Set Java 17 as default for SonarScanner
-            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-            export PATH=$JAVA_HOME/bin:$PATH
-
-            # Verify that Java 17 is active
-            java -version  # Make sure it prints Java 17 info
-
-      # Run SonarCloud Analysis
-      - run:
-          name: Run SonarCloud Analysis
-          command: |
-            # Ensure Java 17 is being used for SonarScanner
-            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-            export PATH=$JAVA_HOME/bin:$PATH
-
-            # Run SonarScanner
-            ./sonar-scanner/bin/sonar-scanner \
-              -Dsonar.projectKey=SONAR_PROJECT_KEY \
-              -Dsonar.organization=SONAR_ORG \
-              -Dsonar.sources=. \
-              -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=$SONAR_TOKEN
-
-      # Install and Run OWASP Dependency-Check
+      # Step 3: Install dependencies for OWASP Dependency-Check and run the scan
       - run:
           name: Run OWASP Dependency-Check
           command: |
+            # Install dependencies for Dependency-Check
+            sudo apt-get update
+            sudo apt-get install -y default-jre
             mkdir -p dependency-check && cd dependency-check
             wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
             unzip dependency-check-8.4.0-release.zip
             ./dependency-check/bin/dependency-check.sh --scan ../ --out .
 
-      # Store Dependency Check Results
+      # Step 4: Store Dependency-Check Results as Artifacts
       - store_artifacts:
           path: dependency-check
 
-      # Store Unit Test Results
+      # Step 5: Store Unit Test Results as Artifacts
       - store_test_results:
           path: test-results
 
+      # Step 6: Send Email with Reports (Unit Test Results & Dependency-Check Report)
+      - run:
+          name: Send Email with Reports
+          command: |
+            # Install mailx (simple email tool)
+            sudo apt-get install -y mailutils
+
+            # Configure email settings (edit with your SMTP details)
+            FROM_EMAIL="k213579@nu.edu.pk"
+            TO_EMAIL="kashmalahashmi1@gmail.com"
+            SUBJECT="CircleCI Reports"
+            BODY="Please find the attached unit test results and dependency check report."
+
+            # Send email with attached reports
+            echo "$BODY" | mailx -s "$SUBJECT" -a test-results/results.xml -a dependency-check/dependency-check-report.html $TO_EMAIL
+
 workflows:
   version: 2
-  build_and_analysis:
+  build:
     jobs:
       - build
