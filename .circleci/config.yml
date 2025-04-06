@@ -24,29 +24,38 @@ jobs:
             mkdir -p test-results
             pytest --junitxml=test-results/results.xml
 
+      # Install OpenJDK 17 and SonarScanner
       - run:
-          name: Install Java 17 and SonarScanner
+          name: Install OpenJDK 17 and SonarScanner
           command: |
-            # Install OpenJDK 17 (Java 17)
+            # Install OpenJDK 17
             sudo apt-get update
             sudo apt-get install -y openjdk-17-jdk
+
+            # Verify Java 17 Installation
+            java -version  # This should print Java 17 info
+
+            # Install SonarScanner
             wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
             unzip sonar-scanner-cli-4.8.0.2856-linux.zip
             mv sonar-scanner-4.8.0.2856-linux sonar-scanner
 
-            # Set Java 17 as the default Java version
+            # Set Java 17 as default
             export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
             export PATH=$JAVA_HOME/bin:$PATH
-            java -version  # Verify Java version
 
+            # Verify that Java 17 is active
+            java -version  # Make sure it prints Java 17 info
+
+      # Run SonarCloud Analysis
       - run:
           name: Run SonarCloud Analysis
           command: |
-            # Make sure Java 17 is the default
+            # Ensure Java 17 is being used
             export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
             export PATH=$JAVA_HOME/bin:$PATH
 
-            # Run SonarCloud analysis
+            # Run SonarScanner
             ./sonar-scanner/bin/sonar-scanner \
               -Dsonar.projectKey=SONAR_PROJECT_KEY \
               -Dsonar.organization=SONAR_ORG \
