@@ -3,13 +3,13 @@ version: 2.1
 jobs:
   build:
     docker:
-      - image: cimg/python:3.10
+      - image: cimg/python:3.10  # Docker image for Python environment
     environment:
       SONAR_USER_HOME: /tmp/sonar
     steps:
-      - checkout
+      - checkout  # Checkout the repository
 
-      # Step 1: Set up Python environment and install dependencies
+      # Set up Python environment and install dependencies
       - run:
           name: Set up Python
           command: |
@@ -18,7 +18,7 @@ jobs:
             pip install -r requirements.txt
             pip install pytest
 
-      # Step 2: Run Unit Tests
+      # Run Unit Tests with pytest and generate results in XML format
       - run:
           name: Run Unit Tests
           command: |
@@ -26,19 +26,7 @@ jobs:
             mkdir -p test-results
             pytest --junitxml=test-results/results.xml
 
-      # Step 3: Run OWASP Dependency-Check
-      - run:
-          name: Run OWASP Dependency-Check
-          command: |
-            # Install dependencies for Dependency-Check
-            sudo apt-get update
-            sudo apt-get install -y default-jre
-            mkdir -p dependency-check && cd dependency-check
-            wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
-            unzip dependency-check-8.4.0-release.zip
-            ./dependency-check/bin/dependency-check.sh --scan ../ --out .
-
-      # Step 4: Install OpenJDK 17 and SonarScanner
+      # Install OpenJDK 17 and SonarScanner
       - run:
           name: Install OpenJDK 17 and SonarScanner
           command: |
@@ -61,7 +49,7 @@ jobs:
             # Verify that Java 17 is active
             java -version  # Make sure it prints Java 17 info
 
-      # Step 5: Run SonarCloud Analysis
+      # Run SonarCloud Analysis
       - run:
           name: Run SonarCloud Analysis
           command: |
@@ -77,15 +65,25 @@ jobs:
               -Dsonar.host.url=https://sonarcloud.io \
               -Dsonar.login=$SONAR_TOKEN
 
-      # Step 6: Store dependency check and test results
+      # Install and Run OWASP Dependency-Check
+      - run:
+          name: Run OWASP Dependency-Check
+          command: |
+            mkdir -p dependency-check && cd dependency-check
+            wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+            unzip dependency-check-8.4.0-release.zip
+            ./dependency-check/bin/dependency-check.sh --scan ../ --out .
+
+      # Store Dependency Check Results
       - store_artifacts:
           path: dependency-check
 
+      # Store Unit Test Results
       - store_test_results:
           path: test-results
 
 workflows:
   version: 2
-  build:
+  build_and_analysis:
     jobs:
       - build
