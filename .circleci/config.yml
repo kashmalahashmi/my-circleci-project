@@ -1,24 +1,56 @@
 version: 2.1
 
-orbs:
-  python: circleci/python@2.1.1
-
 jobs:
   build:
     docker:
-      - image: cimg/python:3.9
+      - image: cimg/python:3.10
+    environment:
+      SONAR_USER_HOME: /tmp/sonar
     steps:
       - checkout
+
       - run:
-          name: Install dependencies
+          name: Set up Python
           command: |
             python -m venv venv
             . venv/bin/activate
             pip install -r requirements.txt
+            pip install pytest
+
       - run:
-          name: Run tests
+          name: Run Unit Tests
           command: |
             . venv/bin/activate
-            pytest tests/ --junitxml=test-results/results.xml
+            pytest --junitxml=test-results/results.xml
+
+      - run:
+          name: Install Sonar Scanner
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y unzip openjdk-11-jre
+            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
+            unzip sonar-scanner-cli-4.8.0.2856-linux.zip
+            mv sonar-scanner-4.8.0.2856-linux sonar-scanner
+
+      - run:
+          name: Run SonarCloud Analysis
+          command: |
+            ./sonar-scanner/bin/sonar-scanner \
+              -Dsonar.projectKey=SONAR_PROJECT_KEY \
+              -Dsonar.organization=SONAR_ORG \
+              -Dsonar.sources=. \
+              -Dsonar.host.url=https://sonarcloud.io \
+              -Dsonar.login=$SONAR_TOKEN
+
+      - run:
+          name: Run OWASP Dependency-Check
+          command: |
+            mkdir -p dependency-check && cd dependency-check
+            wget https://github.com/jeremylong/DependencyCheck/releases/download/v8.4.0/dependency-check-8.4.0-release.zip
+            unzip dependency-check-8.4.0-release.zip
+            ./dependency-check/bin/dependency-check.sh --scan ../ --out .
+
+      - store_artifacts:
+          path: dependency-check
       - store_test_results:
           path: test-results
