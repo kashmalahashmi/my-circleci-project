@@ -6,7 +6,6 @@ jobs:
       - image: cimg/python:3.10
     environment:
       SONAR_USER_HOME: /tmp/sonar
-      SONAR_SCANNER_HOME: ./sonar-scanner
     steps:
       - checkout
 
@@ -26,30 +25,28 @@ jobs:
             pytest --junitxml=test-results/results.xml
 
       - run:
-          name: Install Java 17 for SonarCloud
+          name: Install SonarScanner and Java 17
           command: |
-            sudo apt update
-            sudo apt install -y openjdk-17-jdk
-            sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
-            sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
-            java -version
-
-      - run:
-          name: Install Sonar Scanner
-          command: |
+            sudo apt-get update
+            sudo apt-get install -y unzip openjdk-17-jdk
             wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
             unzip sonar-scanner-cli-4.8.0.2856-linux.zip
             mv sonar-scanner-4.8.0.2856-linux sonar-scanner
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            export PATH=$JAVA_HOME/bin:$PATH
+            java -version
 
       - run:
           name: Run SonarCloud Analysis
           command: |
+            export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+            export PATH=$JAVA_HOME/bin:$PATH
             ./sonar-scanner/bin/sonar-scanner \
               -Dsonar.projectKey=SONAR_PROJECT_KEY \
               -Dsonar.organization=SONAR_ORG \
               -Dsonar.sources=. \
               -Dsonar.host.url=https://sonarcloud.io \
-              -Dsonar.login=SONAR_TOKEN
+              -Dsonar.login=$SONAR_TOKEN
 
       - run:
           name: Run OWASP Dependency-Check
@@ -61,7 +58,6 @@ jobs:
 
       - store_artifacts:
           path: dependency-check
-          destination: dependency-check-report
 
       - store_test_results:
           path: test-results
