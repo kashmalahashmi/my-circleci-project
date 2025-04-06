@@ -4,8 +4,6 @@ jobs:
   build:
     docker:
       - image: cimg/python:3.10  # Docker image for Python environment
-    environment:
-      SONAR_USER_HOME: /tmp/sonar
     steps:
       - checkout  # Checkout the repository
 
@@ -46,7 +44,25 @@ jobs:
       - store_test_results:
           path: test-results
 
-      # Step 6: Send Email with Reports (Unit Test Results & Dependency-Check Report)
+      # Step 6: Build Docker Image
+      - run:
+          name: Build Docker Image
+          command: |
+            docker build -t $DOCKER_USERNAME/$IMAGE_NAME:$CIRCLE_SHA1 .
+
+      # Step 7: Login to Docker Hub
+      - run:
+          name: Docker Login
+          command: |
+            echo $DOCKER_PASSWORD | docker login --username $DOCKER_USERNAME --password-stdin
+
+      # Step 8: Push Docker Image to Docker Hub
+      - run:
+          name: Push Docker Image to Docker Hub
+          command: |
+            docker push $DOCKER_USERNAME/$IMAGE_NAME:$CIRCLE_SHA1
+
+      # Step 9: Send Email with Reports (Unit Test Results & Dependency-Check Report)
       - run:
           name: Send Email with Reports
           command: |
@@ -54,7 +70,7 @@ jobs:
             sudo apt-get install -y mailutils
 
             # Configure email settings (edit with your SMTP details)
-            FROM_EMAIL="k213579@nu.edu.pk"
+            FROM_EMAIL="K213579@nu.edu.pk"
             TO_EMAIL="kashmalahashmi1@gmail.com"
             SUBJECT="CircleCI Reports"
             BODY="Please find the attached unit test results and dependency check report."
