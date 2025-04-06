@@ -6,6 +6,7 @@ jobs:
       - image: cimg/python:3.10
     environment:
       SONAR_USER_HOME: /tmp/sonar
+      SONAR_SCANNER_HOME: ./sonar-scanner
     steps:
       - checkout
 
@@ -21,13 +22,21 @@ jobs:
           name: Run Unit Tests
           command: |
             . venv/bin/activate
+            mkdir -p test-results
             pytest --junitxml=test-results/results.xml
+
+      - run:
+          name: Install Java 17 for SonarCloud
+          command: |
+            sudo apt update
+            sudo apt install -y openjdk-17-jdk
+            sudo update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-17-openjdk-amd64/bin/java 1
+            sudo update-alternatives --set java /usr/lib/jvm/java-17-openjdk-amd64/bin/java
+            java -version
 
       - run:
           name: Install Sonar Scanner
           command: |
-            sudo apt-get update
-            sudo apt-get install -y unzip openjdk-11-jre
             wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.8.0.2856-linux.zip
             unzip sonar-scanner-cli-4.8.0.2856-linux.zip
             mv sonar-scanner-4.8.0.2856-linux sonar-scanner
@@ -52,5 +61,7 @@ jobs:
 
       - store_artifacts:
           path: dependency-check
+          destination: dependency-check-report
+
       - store_test_results:
           path: test-results
